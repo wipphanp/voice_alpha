@@ -248,8 +248,8 @@ class SarvamChunkedStream(tts.ChunkedStream):
                 from livekit.agents._exceptions import APIError
                 raise APIError(f"Sarvam stream TTS {resp.status}: {error_text}")
 
-            # Smaller chunks (1024 bytes) = lower time-to-first-audio
-            async for chunk in resp.content.iter_chunked(1024):
+            # Smaller chunks (512 bytes) = lowest time-to-first-audio possible
+            async for chunk in resp.content.iter_chunked(512):
                 if not chunk:
                     continue
 

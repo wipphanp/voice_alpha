@@ -174,13 +174,13 @@ async def entrypoint(ctx: JobContext):
             model="sarvam-30b",
             base_url="https://api.sarvam.ai/v1",
             api_key=settings.sarvam_api_key,
-            temperature=0.7,
+            temperature=0.5,  # Lower = faster, more focused responses
         )
         logger.info("Using Sarvam sarvam-30b LLM")
     else:
         llm_instance = openai.LLM(
             model="gpt-4o-mini",
-            temperature=0.8,
+            temperature=0.6,  # Lower = faster, more decisive (was 0.8)
         )
         logger.info("Using OpenAI GPT-4o-mini LLM")
 
@@ -192,15 +192,15 @@ async def entrypoint(ctx: JobContext):
         stt_instance = deepgram_plugin.STT(
             api_key=settings.deepgram_api_key,
             language="en-IN",             # Indian English — handles Hindi/English code-switching
-            model="nova-3",
+            model="nova-2",               # nova-2 is faster than nova-3 (lower latency)
             interim_results=True,
             no_delay=True,
-            endpointing_ms=500,           # 500ms silence = balance speed + naturalness (avoid chopping speech)
+            endpointing_ms=300,           # 300ms = fast response while capturing complete phrases
             punctuate=False,
             filler_words=False,
             smart_format=False,
         )
-        logger.info("Using Deepgram Nova-3 STT (streaming, en-IN, 500ms endpoint)")
+        logger.info("Using Deepgram Nova-2 STT (streaming, en-IN, 300ms endpoint)")
     else:
         stt_instance = SarvamSTT(
             language_code=stt_language,
@@ -225,8 +225,8 @@ async def entrypoint(ctx: JobContext):
     if vad_instance is None:
         logger.warning("VAD not prewarmed for this process — loading on demand")
         vad_instance = silero.VAD.load(
-            min_speech_duration=0.1,
-            min_silence_duration=0.4,
+            min_speech_duration=0.05,    # 50ms = detect speech almost instantly
+            min_silence_duration=0.3,    # 300ms silence = quick turn boundary
             activation_threshold=0.5,
         )
 
@@ -235,12 +235,12 @@ async def entrypoint(ctx: JobContext):
         stt=stt_instance,
         llm=llm_instance,
         tts=tts_instance,
-        # ─── Optimized low-latency tuning ─────────────────────────────
-        min_endpointing_delay=0.3,     # 300ms — let customer finish speaking naturally
-        max_endpointing_delay=1.2,     # 1.2s max wait — balance responsiveness + completeness
-        preemptive_generation=True,    # start LLM before endpoint confirmed
+        # ─── ULTRA LOW-LATENCY tuning (sacrifices nothing, maximum speed) ───
+        min_endpointing_delay=0.1,     # 100ms — react IMMEDIATELY (preemptive gen handles errors)
+        max_endpointing_delay=0.8,     # 800ms max — force quick response
+        preemptive_generation=True,    # start LLM before endpoint confirmed (KEY for speed)
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.2, # 200ms barge-in — sensitive to interruptions
+        min_interruption_duration=0.15,# 150ms barge-in — ultra-responsive
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
     )
