@@ -391,25 +391,21 @@ class TradingAssistant(Agent):
         Switch the conversation language ONLY when the customer EXPLICITLY and
         DIRECTLY asks you to speak in a different language.
 
-        VALID triggers (customer must say something like):
+        VALID triggers (customer must clearly state, e.g.):
         - "Hindi mein baat karo" / "Speak in Hindi"
         - "Switch to English please"
         - "Tamil la pesungal" / "Talk in Tamil"
         - "Kannada nalli maatadi"
 
-        NEVER call this tool when:
-        - Customer uses English words inside a regional language sentence (normal
-          code-switching like "trading account open madidini" in Kannada)
-        - Customer uses domain terms like "profit", "bot", "subscription", "setup",
-          "account", "demo" in English — these are always English across all languages
-        - Customer says a single English word or short phrase while otherwise speaking
-          their chosen language
-        - Customer simply RESPONDS in a different language without explicitly asking
-          you to switch — continue in your current language and reply naturally
-        - You THINK the customer might prefer a different language — do NOT assume
+        NEVER CALL THIS TOOL when:
+        - Customer uses English words inside regional language (code-switching is normal)
+        - Customer uses domain terms in English: trading, bot, profit, subscription, setup,
+          account, demo — these are ALWAYS English across all languages
+        - Customer simply RESPONDS in a different language without asking you to switch
+        - You ASSUME they might prefer different language — WRONG, only on explicit request
 
-        ONLY switch when the customer gives a CLEAR, EXPLICIT instruction to change
-        the language of the conversation.
+        **CRITICAL RULE: NEVER auto-detect or assume language change.**
+        **Only execute this when customer gives a CLEAR, EXPLICIT instruction.**
 
         Args:
             language: Target language - one of: hindi, english, kannada, telugu, malayalam, tamil, marathi

@@ -195,12 +195,12 @@ async def entrypoint(ctx: JobContext):
             model="nova-3",
             interim_results=True,
             no_delay=True,
-            endpointing_ms=250,           # 250ms silence = fast turn detection
+            endpointing_ms=500,           # 500ms silence = balance speed + naturalness (avoid chopping speech)
             punctuate=False,
             filler_words=False,
             smart_format=False,
         )
-        logger.info("Using Deepgram Nova-3 STT (streaming, en-IN, 250ms endpoint)")
+        logger.info("Using Deepgram Nova-3 STT (streaming, en-IN, 500ms endpoint)")
     else:
         stt_instance = SarvamSTT(
             language_code=stt_language,
@@ -235,12 +235,12 @@ async def entrypoint(ctx: JobContext):
         stt=stt_instance,
         llm=llm_instance,
         tts=tts_instance,
-        # ─── Aggressive low-latency tuning ────────────────────────────
-        min_endpointing_delay=0.2,     # 200ms — respond almost immediately
-        max_endpointing_delay=1.0,     # 1s max wait
+        # ─── Optimized low-latency tuning ─────────────────────────────
+        min_endpointing_delay=0.3,     # 300ms — let customer finish speaking naturally
+        max_endpointing_delay=1.2,     # 1.2s max wait — balance responsiveness + completeness
         preemptive_generation=True,    # start LLM before endpoint confirmed
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.3,  # 300ms barge-in
+        min_interruption_duration=0.2, # 200ms barge-in — sensitive to interruptions
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
     )
@@ -315,28 +315,33 @@ async def entrypoint(ctx: JobContext):
     logger.info("Transcript capture started for room: %s", ctx.room.name)
 
     # ─── Agent speaks first — always opens in Kannada ──────────────────
-    # Winners Paradise is based in Bengaluru. Every call starts in Kannada,
-    # then asks the customer's preferred language and switches accordingly.
+    # Winners Paradise is based in Bengaluru. Every call starts in Kannada.
+    # Use session.say() for immediate, deterministic playback of the greeting.
     from app.config.constants import (
-        OPENING_GREETING_WITH_NAME, OPENING_GREETING_NO_NAME,
         SILENCE_PROMPTS, WRAPUP_PROMPTS, UNKNOWN_NAME_PLACEHOLDERS,
     )
 
     name_is_unknown = customer_name.strip().lower() in UNKNOWN_NAME_PLACEHOLDERS
 
     if name_is_unknown:
-        greeting_instruction = OPENING_GREETING_NO_NAME.format(
-            agent_name=agent_name
+        # Direct greeting text for unknown names
+        greeting_text = (
+            f"ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
+            f"ನಿಮಗೊಂದು really exciting opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
+            f"ಮೋದಲು ನಿಮ್ಮ ಹೆಸರು ಹೇಳ್ತೀರಾ please?"
         )
     else:
-        greeting_instruction = OPENING_GREETING_WITH_NAME.format(
-            customer_name=customer_name, agent_name=agent_name
+        # Direct greeting text with customer name
+        greeting_text = (
+            f"{customer_name} ಅವರೇ, ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
+            f"ನಿಮಗೊಂದು really exciting Gold and Forex trading opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
+            f"ಒಂದ್ minute ಮಾತಾಡಬಹುದಾ?"
         )
 
-    # Fire-and-forget: don't await the greeting — the session is already
-    # listening for customer speech in parallel. Awaiting would block the
-    # pipeline from processing customer input until the greeting finishes.
-    session.generate_reply(instructions=greeting_instruction)
+    # Queue the greeting for immediate playback using session.say()
+    # This ensures the customer hears the agent speaking immediately.
+    logger.info("Speaking opening greeting: %s", greeting_text[:50] + "...")
+    session.say(greeting_text, allow_interruptions=True)
 
     logger.info(
         "Agent session started: room=%s agent=%s (%s) opening=Kannada",
