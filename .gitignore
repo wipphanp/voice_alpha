@@ -1,0 +1,31 @@
+# Environment
+.env
+
+# Docs
+README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Data (runtime generated)
+data/*.json
+data/recordings/
+data/transcripts/
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs (runtime generated)
+*.log

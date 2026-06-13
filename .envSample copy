@@ -1,0 +1,86 @@
+# ════════════════════════════════════════════════════════════════════════════
+# Alpha Bot AI — LiveKit + Sarvam AI Gold & Forex Trading Subscription Agent
+# Environment Configuration
+# ════════════════════════════════════════════════════════════════════════════
+
+# ─── LIVEKIT (required) ──────────────────────────────────────────────────────
+# Get from: https://cloud.livekit.io → Project Settings
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=your_livekit_api_key
+LIVEKIT_API_SECRET=your_livekit_api_secret
+
+# ─── SARVAM AI (required) ────────────────────────────────────────────────────
+# Get from: https://dashboard.sarvam.ai → API Keys
+# Used for both STT (Saaras) and TTS (Bulbul)
+SARVAM_API_KEY=your_sarvam_api_key
+
+# ─── OPENAI (required if USE_SARVAM_LLM=false) ──────────────────────────────
+# Get from: https://platform.openai.com/api-keys
+# Not needed if USE_SARVAM_LLM=true
+OPENAI_API_KEY=your_openai_api_key
+
+# ─── SIP TRUNK — PLIVO (required for phone calls) ───────────────────────────
+# Created via: lk sip outbound create sip-trunk.json
+# This is the LiveKit SIP Trunk ID returned after creation
+SIP_OUTBOUND_TRUNK_ID=ST_xxxxxxxxxxxx
+
+# ─── VOICE CONFIGURATION (optional) ─────────────────────────────────────────
+# Sarvam Bulbul v2 voice options:
+#   Female: ritu, kavya, neha, shreya, pooja, simran, priya, roopa, ishita
+#   Male: aditya, amit, dev, varun, kabir, shubh, ashutosh
+SARVAM_TTS_SPEAKER=ritu
+
+# Default conversation language (hi-IN, en-IN, mr-IN, hi-EN for Hinglish)
+DEFAULT_LANGUAGE=hi-IN
+
+# Set to true to use Sarvam sarvam-m4 LLM instead of GPT-4o-mini
+# Sarvam LLM has better Hindi/Marathi understanding but GPT-4o-mini
+# has more reliable function calling
+USE_SARVAM_LLM=false
+
+# ─── SERVER ──────────────────────────────────────────────────────────────────
+PORT=8000
+HOST=0.0.0.0
+DEBUG=false
+
+# ─── SECURITY (optional — all default to current open behavior) ─────────────
+# If set, the dashboard and every /api route require this token.
+# Provide it as an "X-API-Key" header, "Authorization: Bearer <token>", or
+# open the dashboard as  http://localhost:8000/?token=<token>
+# Leave EMPTY to disable auth (a warning is logged at startup).
+API_AUTH_TOKEN=
+
+# Comma-separated CORS origins for cross-origin API callers.
+# Empty = localhost only on the configured PORT (dashboard is same-origin).
+# Example: ALLOWED_ORIGINS=https://ops.example.com,https://admin.example.com
+ALLOWED_ORIGINS=
+
+# Max outbound-call trigger requests per minute (POST /api/call, /api/call/batch).
+# 0 = unlimited.
+CALL_RATE_LIMIT_PER_MINUTE=20
+
+# ════════════════════════════════════════════════════════════════════════════
+# NOTES:
+# ════════════════════════════════════════════════════════════════════════════
+#
+# 1. NO NGROK NEEDED — LiveKit handles real-time audio transport directly.
+#    The server only needs to be reachable for the operator dashboard UI.
+#
+# 2. PLIVO SIP TRUNK SETUP:
+#    - Sign up at https://www.plivo.com/sip-trunking/
+#    - Complete KYC (GST certificate + business registration required)
+#    - Get Indian DID number (160-series for commercial calls)
+#    - Create sip-trunk.json with Plivo credentials
+#    - Run: lk sip outbound create sip-trunk.json
+#    - Copy the returned trunk ID to SIP_OUTBOUND_TRUNK_ID above
+#
+# 3. LIVEKIT CLOUD FREE TIER:
+#    - 1,000 agent-minutes/month on Build plan (free)
+#    - Upgrade to Ship plan ($50/mo) for higher volumes
+#    - Or self-host the open-source LiveKit server
+#
+# 4. SARVAM AI FREE CREDITS:
+#    - Rs 100 free credits on signup
+#    - STT: ~Rs 0.50/min | TTS: ~Rs 0.50-1.00/min
+#
+# ════════════════════════════════════════════════════════════════════════════

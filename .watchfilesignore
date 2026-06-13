@@ -1,0 +1,8 @@
+data/
+*.wav
+*.webm
+*.json
+*.txt
+*.log
+__pycache__/
+.git/

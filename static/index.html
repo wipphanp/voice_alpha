@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Bot AI — Voice Agent Dashboard</title>
+<script src="https://unpkg.com/livekit-client@2.6.1/dist/livekit-client.umd.js"></script>
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.8);
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-2: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.header {
+  width: 100%;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header h1 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  background: var(--gradient-1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header .badge {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-hover);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .container { grid-template-columns: 1fr; padding: 16px; }
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  backdrop-filter: blur(10px);
+}
+
+.card h2 {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card h2 .icon { font-size: 1.2rem; }
+
+/* ─── Voice Call Card ─────────────────────────────────────── */
+.voice-card {
+  grid-column: 1 / -1;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--accent);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+.btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--gradient-1);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* ─── Status Indicator ────────────────────────────────────── */
+.status-bar {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-dot.connected { background: var(--success); animation: pulse 2s infinite; }
+.status-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
+.status-dot.error { background: var(--danger); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ─── Audio Visualizer ────────────────────────────────────── */
+.visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 40px;
+  margin-top: 16px;
+}
+
+.visualizer .bar {
+  width: 4px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: height 0.1s;
+}
+
+.visualizer.active .bar {
+  animation: audioBar 0.5s ease-in-out infinite alternate;
+}
+
+.visualizer.active .bar:nth-child(1) { animation-delay: 0s; }
+.visualizer.active .bar:nth-child(2) { animation-delay: 0.1s; }
+.visualizer.active .bar:nth-child(3) { animation-delay: 0.2s; }
+.visualizer.active .bar:nth-child(4) { animation-delay: 0.3s; }
+.visualizer.active .bar:nth-child(5) { animation-delay: 0.4s; }
+.visualizer.active .bar:nth-child(6) { animation-delay: 0.3s; }
+.visualizer.active .bar:nth-child(7) { animation-delay: 0.2s; }
+.visualizer.active .bar:nth-child(8) { animation-delay: 0.1s; }
+
+@keyframes audioBar {
+  from { height: 8px; }
+  to { height: 36px; }
+}
+
+/* ─── Leads Table ─────────────────────────────────────────── */
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.leads-table th, .leads-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.leads-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+}
+
+.leads-table td { color: var(--text-secondary); }
+
+.status-badge {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.status-badge.called { background: rgba(6, 182, 212, 0.15); color: var(--info); }
+.status-badge.booked { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.status-badge.completed { background: rgba(99, 102, 241, 0.15); color: var(--accent-hover); }
+.status-badge.wrong_number { background: rgba(100, 116, 139, 0.15); color: var(--text-muted); }
+.status-badge.existing_customer { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+
+/* ─── Log Panel ───────────────────────────────────────────── */
+.log-panel {
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.log-panel .log-entry {
+  padding: 2px 0;
+}
+
+.log-panel .log-time { color: var(--text-muted); }
+.log-panel .log-info { color: var(--info); }
+.log-panel .log-success { color: var(--success); }
+.log-panel .log-error { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Alpha Bot AI</h1>
+  <span class="badge">Gold & Forex Trading Subscription Agent Dashboard</span>
+</div>
+
+<div class="container">
+
+  <!-- Voice Call Card -->
+  <div class="card voice-card">
+    <h2><span class="icon">🎙️</span> Browser Voice Call</h2>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+      Talk to the AI broker assistant directly from your browser via WebRTC. No phone call needed.
+    </p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Your Name <span style="color:var(--text-muted);font-size:0.75rem;">(leave blank — agent will ask)</span></label>
+        <input type="text" id="customerName" placeholder="e.g. Rahul Sharma" value="">
+      </div>
+      <div class="form-group">
+        <label>Phone (for context)</label>
+        <input type="text" id="customerPhone" placeholder="+919876543210" value="+919876543210">
+      </div>
+      <div class="form-group">
+        <label>Language</label>
+        <select id="language">
+          <option value="en-IN" selected>English</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="hi-EN">Hinglish</option>
+          <option value="kn-IN">Kannada</option>
+          <option value="te-IN">Telugu</option>
+          <option value="ml-IN">Malayalam</option>
+          <option value="ta-IN">Tamil</option>
+          <option value="mr-IN">Marathi</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" id="btnConnect" onclick="startCall()">
+        🎤 Browser Call
+      </button>
+      <button class="btn btn-primary" id="btnPhoneCall" onclick="startPhoneCall()" style="background:var(--gradient-2);">
+        📞 Call Phone
+      </button>
+      <button class="btn btn-danger" id="btnDisconnect" onclick="endCall()" disabled>
+        ⏹ End Call
+      </button>
+    </div>
+
+    <!-- Lead selector -->
+    <div class="form-group" style="margin-top:12px;">
+      <label>Call as Lead</label>
+      <select id="leadSelector" onchange="onLeadSelected()" style="width:100%;padding:12px 16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.95rem;">
+        <option value="">-- Select a lead to call --</option>
+      </select>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Ready — click "Start Voice Call" to begin</span>
+    </div>
+
+    <!-- Audio Visualizer -->
+    <div class="visualizer" id="visualizer">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+  </div>
+
+  <!-- Leads Card -->
+  <div class="card">
+    <h2><span class="icon">📋</span> Leads</h2>
+    <div class="form-row" style="grid-template-columns: 1fr 1fr auto;">
+      <input type="text" id="newLeadName" placeholder="Name" style="padding:10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;">
+      <input type="text" id="newLeadPhone" placeholder="+91..." style="padding:10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;">
+      <button class="btn btn-primary" style="padding:10px 16px;font-size:0.85rem;" onclick="addLead()">+ Add</button>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn btn-danger" style="padding:8px 14px;font-size:0.8rem;" onclick="deleteAllLeads()">🗑 Delete All</button>
+      <button class="btn btn-primary" style="padding:8px 14px;font-size:0.8rem;background:var(--warning);" onclick="addMultipleLeads()">📋 Add Multiple</button>
+    </div>
+    <table class="leads-table">
+      <thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Name</th><th>Phone</th><th>Status</th><th></th></tr></thead>
+      <tbody id="leadsBody"></tbody>
+    </table>
+    <button class="btn btn-danger" style="padding:8px 14px;font-size:0.8rem;margin-top:8px;display:none;" id="btnDeleteSelected" onclick="deleteSelectedLeads()">🗑 Delete Selected</button>
+  </div>
+
+  <!-- Bookings & Log Card -->
+  <div class="card">
+    <h2><span class="icon">📝</span> Activity Log</h2>
+    <div class="log-panel" id="logPanel">
+      <div class="log-entry"><span class="log-time">[--:--]</span> Waiting for activity...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Hidden audio element for agent's voice (fallback) -->
+<audio id="agentAudio" autoplay style="display:none;"></audio>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// LiveKit WebRTC Voice Client
+// ═══════════════════════════════════════════════════════════════════
+
+const { Room, RoomEvent, Track, ConnectionState } = LivekitClient;
+
+let currentRoom = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let currentRoomName = '';
+let currentPhoneRoom = '';   // room name of an active SIP/phone call (no browser WebRTC)
+
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = text;
+}
+
+function addLog(message, type = 'info') {
+  const panel = document.getElementById('logPanel');
+  const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+  panel.appendChild(entry);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+async function startCall() {
+  const name = document.getElementById('customerName').value.trim() || 'Browser User';
+  const phone = document.getElementById('customerPhone').value.trim() || '+910000000000';
+  const language = document.getElementById('language').value;
+
+  document.getElementById('btnConnect').disabled = true;
+  document.getElementById('btnDisconnect').disabled = false;
+  setStatus('connecting', 'Connecting to voice agent...');
+  addLog('Requesting voice session...', 'info');
+
+  try {
+    // 1. Get token from our server
+    const res = await fetch('/api/webrtc/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, language }),
+    });
+
+    // Parse defensively: on a server error the body may be plain text
+    // (e.g. "Internal Server Error"), which is not valid JSON.
+    const raw = await res.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      data = { error: raw || ('HTTP ' + res.status) };
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || data.detail || ('Request failed (HTTP ' + res.status + ')'));
+    }
+
+    addLog(`Room created: ${data.room_name}`, 'success');
+
+    // 2. Connect to LiveKit room
+    currentRoom = new Room({
+      audioCaptureDefaults: { 
+        autoGainControl: true, 
+        noiseSuppression: true, 
+        echoCancellation: true,
+        sampleRate: 48000,
+        channelCount: 1,
+      },
+      adaptiveStream: true,
+      dynacast: true,
+      audioOutput: { deviceId: '' },
+    });
+
+    // Event handlers
+    currentRoom.on(RoomEvent.Connected, () => {
+      setStatus('connected', 'Connected — waiting for the agent');
+      addLog('Connected to room. Waiting for the agent to join...', 'success');
+      document.getElementById('visualizer').classList.add('active');
+    });
+
+    currentRoom.on(RoomEvent.Disconnected, () => {
+      setStatus('', 'Call ended');
+      addLog('Call ended', 'info');
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder = null;
+      }
+      currentRoom = null;
+      resetUI();
+    });
+
+    currentRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      addLog(`${participant.identity} left the room`, 'info');
+      // Any non-customer participant leaving means agent hung up
+      if (!participant.identity.startsWith('customer')) {
+        setStatus('', 'Agent ended the call');
+        addLog('Agent disconnected — call complete', 'success');
+        if (currentRoom) {
+          currentRoom.disconnect();
+          currentRoom = null;
+        }
+        resetUI();
+      }
+    });
+
+    // Fallback: check every 3s if room is still connected
+    const connectionCheck = setInterval(() => {
+      if (!currentRoom || currentRoom.state === 'disconnected') {
+        clearInterval(connectionCheck);
+        currentRoom = null;
+        resetUI();
+        setStatus('', 'Call ended');
+      }
+    }, 3000);
+
+    currentRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+      addLog(`${participant.identity} joined the room`, 'info');
+    });
+
+    currentRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (track.kind === Track.Kind.Audio) {
+        // Attach agent's audio — attach() returns the media element
+        const el = track.attach();
+        el.id = 'agentAudioTrack_' + participant.identity;
+        el.autoplay = true;
+        el.volume = 1.0;
+        document.body.appendChild(el);
+        addLog('Agent audio connected — you can hear the agent now', 'success');
+      }
+    });
+
+    currentRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
+      const elements = track.detach();
+      elements.forEach(el => el.remove());
+    });
+
+    currentRoom.on(RoomEvent.ConnectionStateChanged, (state) => {
+      if (state === ConnectionState.Reconnecting) {
+        setStatus('connecting', 'Reconnecting...');
+        addLog('Connection interrupted, reconnecting...', 'error');
+      } else if (state === ConnectionState.Disconnected) {
+        currentRoom = null;
+        resetUI();
+        setStatus('', 'Call ended');
+      }
+    });
+
+    // 3. Connect and publish microphone with high quality audio
+    await currentRoom.connect(data.livekit_url, data.token);
+    await currentRoom.localParticipant.setMicrophoneEnabled(true, {
+      audioPreset: { maxBitrate: 96000 },
+      dtx: false,
+      red: false,
+      stopMicTrackOnMute: false,
+    });
+
+    // Ensure audio playback is allowed (handles browser autoplay policy)
+    try {
+      await currentRoom.startAudio();
+      addLog('Audio playback enabled', 'success');
+    } catch(e) {
+      addLog('Click anywhere on page if you cannot hear audio', 'info');
+    }
+
+    addLog('Microphone enabled — start speaking', 'success');
+
+    // Start browser-side raw mic recording (pre-Opus, full quality)
+    currentRoomName = data.room_name;
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { sampleRate: 48000, channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(micStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 });
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        if (recordedChunks.length > 0) {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          // Upload raw recording to server
+          const formData = new FormData();
+          formData.append('audio', blob, `customer_${currentRoomName}.webm`);
+          formData.append('room_name', currentRoomName);
+          try {
+            await fetch('/api/recordings/upload-customer', { method: 'POST', body: formData });
+            addLog('Customer HD audio uploaded', 'success');
+          } catch(err) { console.error('Upload failed:', err); }
+        }
+        // Stop mic stream tracks
+        micStream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start(1000); // Capture in 1s chunks
+      addLog('HD mic recording active', 'info');
+    } catch(e) {
+      console.log('Browser recording not available:', e);
+    }
+
+    // Keep the room open while the agent spins up.
+    // If the agent has not joined after a short grace period, we keep waiting
+    // rather than disconnecting the call prematurely.
+    let waitingNoticeTimer = null;
+    const checkParticipants = () => {
+      if (!currentRoom) return;
+      const remoteCount = currentRoom.remoteParticipants.size;
+
+      if (remoteCount === 0 && !waitingNoticeTimer) {
+        waitingNoticeTimer = setTimeout(() => {
+          if (currentRoom && currentRoom.remoteParticipants.size === 0) {
+            setStatus('connected', 'Connected — still waiting for the agent');
+            addLog('Still waiting for the agent to join...', 'info');
+          }
+          waitingNoticeTimer = null;
+        }, 15000);
+      } else if (remoteCount > 0 && waitingNoticeTimer) {
+        clearTimeout(waitingNoticeTimer);
+        waitingNoticeTimer = null;
+      }
+    };
+    // Check every 2 seconds
+    const participantMonitor = setInterval(() => {
+      if (!currentRoom) {
+        if (waitingNoticeTimer) clearTimeout(waitingNoticeTimer);
+        clearInterval(participantMonitor);
+        return;
+      }
+      checkParticipants();
+    }, 2000);
+
+  } catch (err) {
+    setStatus('error', 'Connection failed: ' + err.message);
+    addLog('Error: ' + err.message, 'error');
+    resetUI();
+  }
+}
+
+async function endCall() {
+  // Stop browser-side recording first
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    mediaRecorder = null;
+  }
+  // Browser WebRTC call: disconnect locally.
+  if (currentRoom) {
+    addLog('Ending call...', 'info');
+    await currentRoom.disconnect();
+    currentRoom = null;
+  }
+  // Phone (SIP) call: ask the server to tear down the LiveKit room.
+  if (currentPhoneRoom) {
+    addLog('Ending phone call...', 'info');
+    try {
+      const res = await fetch('/api/call/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_name: currentPhoneRoom }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        addLog('Phone call ended', 'success');
+      } else {
+        addLog('Phone call may have already ended: ' + (data.error || res.status), 'info');
+      }
+    } catch (err) {
+      addLog('Failed to end phone call: ' + err.message, 'error');
+    }
+    currentPhoneRoom = '';
+    loadLeads();
+  }
+  resetUI();
+  setStatus('', 'Call ended');
+}
+
+async function startPhoneCall() {
+  const name = document.getElementById('customerName').value.trim() || 'Customer';
+  const phone = document.getElementById('customerPhone').value.trim();
+
+  if (!phone || !phone.startsWith('+')) {
+    addLog('Enter a valid phone number with country code (e.g. +919876543210)', 'error');
+    return;
+  }
+
+  setStatus('connecting', 'Dialing ' + phone + '...');
+  addLog(`Calling ${name} at ${phone}...`, 'info');
+
+  try {
+    const res = await fetch('/api/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Call failed');
+    }
+
+    // Track the room so the operator can force-end it via the End Call button.
+    currentPhoneRoom = data.room_name || '';
+    document.getElementById('btnDisconnect').disabled = false;
+    document.getElementById('btnPhoneCall').disabled = true;
+
+    setStatus('connected', 'Phone call active — agent is talking to ' + name);
+    addLog(`Call connected: room ${data.room_name}`, 'success');
+    loadLeads();
+
+  } catch (err) {
+    setStatus('error', err.message);
+    addLog('Phone call error: ' + err.message, 'error');
+  }
+}
+
+function resetUI() {
+  document.getElementById('btnConnect').disabled = false;
+  document.getElementById('btnDisconnect').disabled = true;
+  document.getElementById('btnPhoneCall').disabled = false;
+  document.getElementById('visualizer').classList.remove('active');
+  // Update status dot
+  document.getElementById('statusDot').className = 'status-dot';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Leads Management
+// ═══════════════════════════════════════════════════════════════════
+
+async function loadLeads() {
+  try {
+    const res = await fetch('/api/leads');
+    const leads = await res.json();
+    const tbody = document.getElementById('leadsBody');
+    tbody.innerHTML = '';
+    leads.forEach(lead => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" class="lead-checkbox" data-phone="${lead.phone}"></td>
+        <td>${lead.name}</td>
+        <td>${lead.phone}</td>
+        <td><span class="status-badge ${lead.status}">${lead.status}</span></td>
+        <td><button onclick="deleteLead('${lead.phone}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    updateDeleteSelectedBtn();
+
+    // Populate lead selector dropdown
+    const selector = document.getElementById('leadSelector');
+    const currentVal = selector.value;
+    selector.innerHTML = '<option value="">-- Select a lead to call --</option>';
+    leads.forEach(lead => {
+      const opt = document.createElement('option');
+      opt.value = JSON.stringify({ name: lead.name, phone: lead.phone });
+      opt.textContent = `${lead.name} (${lead.phone})`;
+      selector.appendChild(opt);
+    });
+    if (currentVal) selector.value = currentVal;
+  } catch (e) {
+    console.error('Failed to load leads:', e);
+  }
+}
+
+function onLeadSelected() {
+  const selector = document.getElementById('leadSelector');
+  if (!selector.value) return;
+  const lead = JSON.parse(selector.value);
+  document.getElementById('customerName').value = lead.name;
+  document.getElementById('customerPhone').value = lead.phone;
+}
+
+function toggleSelectAll() {
+  const checked = document.getElementById('selectAll').checked;
+  document.querySelectorAll('.lead-checkbox').forEach(cb => cb.checked = checked);
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  const anyChecked = document.querySelectorAll('.lead-checkbox:checked').length > 0;
+  document.getElementById('btnDeleteSelected').style.display = anyChecked ? 'inline-flex' : 'none';
+}
+
+// Listen for checkbox changes
+document.addEventListener('change', (e) => {
+  if (e.target.classList.contains('lead-checkbox')) updateDeleteSelectedBtn();
+});
+
+async function deleteLead(phone) {
+  try {
+    await fetch('/api/leads/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+    loadLeads();
+    addLog(`Lead deleted: ${phone}`, 'info');
+  } catch (e) {
+    addLog('Failed to delete lead: ' + e.message, 'error');
+  }
+}
+
+async function deleteSelectedLeads() {
+  const phones = [...document.querySelectorAll('.lead-checkbox:checked')].map(cb => cb.dataset.phone);
+  if (!phones.length) return;
+  if (!confirm(`Delete ${phones.length} selected lead(s)?`)) return;
+
+  try {
+    await fetch('/api/leads/delete-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phones }),
+    });
+    document.getElementById('selectAll').checked = false;
+    loadLeads();
+    addLog(`Deleted ${phones.length} leads`, 'info');
+  } catch (e) {
+    addLog('Failed to delete leads: ' + e.message, 'error');
+  }
+}
+
+async function deleteAllLeads() {
+  if (!confirm('Delete ALL leads? This cannot be undone.')) return;
+  try {
+    await fetch('/api/leads', { method: 'DELETE' });
+    loadLeads();
+    addLog('All leads deleted', 'info');
+  } catch (e) {
+    addLog('Failed to delete leads: ' + e.message, 'error');
+  }
+}
+
+async function addMultipleLeads() {
+  const input = prompt('Enter leads (one per line):\\nFormat: Name, +91Phone\\n\\nExample:\\nRahul Sharma, +919876543210\\nPriya Patel, +919123456789');
+  if (!input) return;
+
+  const lines = input.split('\\n').filter(l => l.trim());
+  const leads = [];
+  for (const line of lines) {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length >= 2 && parts[1].startsWith('+')) {
+      leads.push({ name: parts[0], phone: parts[1] });
+    }
+  }
+
+  if (!leads.length) { addLog('No valid leads found in input', 'error'); return; }
+
+  try {
+    const res = await fetch('/api/leads/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leads }),
+    });
+    loadLeads();
+    addLog(`Added ${leads.length} leads`, 'success');
+  } catch (e) {
+    addLog('Failed to add leads: ' + e.message, 'error');
+  }
+}
+
+async function addLead() {
+  const name = document.getElementById('newLeadName').value.trim();
+  const phone = document.getElementById('newLeadPhone').value.trim();
+  if (!name || !phone) return;
+
+  try {
+    await fetch('/api/leads/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone }),
+    });
+    document.getElementById('newLeadName').value = '';
+    document.getElementById('newLeadPhone').value = '';
+    loadLeads();
+    addLog(`Lead added: ${name} (${phone})`, 'success');
+  } catch (e) {
+    addLog('Failed to add lead: ' + e.message, 'error');
+  }
+}
+
+// Load leads on page load
+loadLeads();
+// Refresh leads every 10 seconds
+setInterval(loadLeads, 10000);
+
+// Check SIP status and disable phone button if not configured
+fetch('/api/status').then(r => r.json()).then(data => {
+  if (!data.sip_configured) {
+    const btn = document.getElementById('btnPhoneCall');
+    btn.disabled = true;
+    btn.title = 'SIP trunk not configured — set SIP_OUTBOUND_TRUNK_ID in .env';
+    btn.style.opacity = '0.5';
+  }
+}).catch(() => {});
+</script>
+
+</body>
+</html>
