@@ -65,8 +65,8 @@ class ConversationMemory:
         Args:
             phone: Customer phone number
             summary: Brief summary of the conversation
-            outcome: Call outcome (e.g., appointment_booked, callback_requested)
-            preferences: Extracted preferences (budget, location, property type, etc.)
+            outcome: Call outcome (e.g., demo_scheduled, subscription_confirmed, callback_requested)
+            preferences: Extracted preferences (subscription interest, risk tolerance, experience level, etc.)
         """
         conversations = self._read_conversations()
 
@@ -124,7 +124,7 @@ class ConversationMemory:
             phone: Customer phone number
 
         Returns:
-            dict with extracted preferences (budget, location, property_type, etc.)
+            dict with extracted preferences (subscription interest, risk tolerance, experience level, etc.)
         """
         conversations = self._read_conversations()
         entries = conversations.get(phone, [])

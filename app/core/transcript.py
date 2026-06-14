@@ -235,13 +235,13 @@ async def _summarize_with_llm(dialogue: str, llm_instance, customer_name: str) -
     from livekit.agents.llm import ChatContext
 
     instruction = (
-        "You are a real-estate call assistant. Summarize the following phone "
-        "conversation between a property broker's AI agent and a customer"
+        "You are a trading subscription sales call assistant. Summarize the following phone "
+        "conversation between Winners Paradise's AI sales agent and a customer"
         + (f" named {customer_name}" if customer_name else "")
-        + ". Write 3-5 short sentences in English covering: what the customer "
-        "wants (budget, location, property type if mentioned), the key points "
-        "discussed, and the outcome / next step (e.g. appointment booked, "
-        "callback requested, not interested). Be factual and concise.\n\n"
+        + ". Write 3-5 short sentences in English covering: what the customer's "
+        "interest level is (interested, needs more info, not interested), the key points "
+        "discussed (trading bot features, subscription plans, demo, risks), and the outcome / next step (e.g. demo scheduled, "
+        "callback requested, subscription confirmed, not interested). Be factual and concise.\n\n"
         "Conversation:\n" + dialogue + "\n\nSummary:"
     )
 
