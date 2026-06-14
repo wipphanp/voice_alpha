@@ -195,12 +195,12 @@ async def entrypoint(ctx: JobContext):
             model="nova-2",               # nova-2 is faster than nova-3 (lower latency)
             interim_results=True,
             no_delay=True,
-            endpointing_ms=300,           # 300ms = fast response while capturing complete phrases
+            endpointing_ms=200,           # 200ms = ultra-fast (was 300ms)
             punctuate=False,
             filler_words=False,
             smart_format=False,
         )
-        logger.info("Using Deepgram Nova-2 STT (streaming, en-IN, 300ms endpoint)")
+        logger.info("Using Deepgram Nova-2 STT (streaming, en-IN, 200ms endpoint)")
     else:
         stt_instance = SarvamSTT(
             language_code=stt_language,
@@ -225,9 +225,9 @@ async def entrypoint(ctx: JobContext):
     if vad_instance is None:
         logger.warning("VAD not prewarmed for this process — loading on demand")
         vad_instance = silero.VAD.load(
-            min_speech_duration=0.05,    # 50ms = detect speech almost instantly
-            min_silence_duration=0.3,    # 300ms silence = quick turn boundary
-            activation_threshold=0.5,
+            min_speech_duration=0.03,    # 30ms = ultra-fast detection (was 50ms)
+            min_silence_duration=0.2,    # 200ms = quick turn boundary (was 300ms)
+            activation_threshold=0.4,    # Lower = more sensitive (was 0.5)
         )
 
     session = AgentSession(
@@ -235,12 +235,12 @@ async def entrypoint(ctx: JobContext):
         stt=stt_instance,
         llm=llm_instance,
         tts=tts_instance,
-        # ─── ULTRA LOW-LATENCY tuning (sacrifices nothing, maximum speed) ───
-        min_endpointing_delay=0.1,     # 100ms — react IMMEDIATELY (preemptive gen handles errors)
-        max_endpointing_delay=0.8,     # 800ms max — force quick response
+        # ─── ULTRA LOW-LATENCY tuning (maximum speed) ───────────────────
+        min_endpointing_delay=0.05,    # 50ms — react INSTANTLY (was 100ms)
+        max_endpointing_delay=0.6,     # 600ms max — very fast (was 800ms)
         preemptive_generation=True,    # start LLM before endpoint confirmed (KEY for speed)
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.15,# 150ms barge-in — ultra-responsive
+        min_interruption_duration=0.1, # 100ms barge-in — maximum sensitivity (was 150ms)
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
     )

@@ -35,9 +35,9 @@ def prewarm(proc: JobProcess) -> None:
     instead of paying the load cost (latency + memory) on every call.
     """
     proc.userdata["vad"] = silero.VAD.load(
-        min_speech_duration=0.05,     # 50ms — detect speech almost instantly
-        min_silence_duration=0.3,     # 300ms silence = quick turn boundary
-        activation_threshold=0.5,     # Default sensitivity — avoids false triggers on noise
+        min_speech_duration=0.03,     # 30ms — ultra-fast speech detection
+        min_silence_duration=0.2,     # 200ms — quick turn boundary
+        activation_threshold=0.4,     # More sensitive (lower threshold)
     )
 
 
