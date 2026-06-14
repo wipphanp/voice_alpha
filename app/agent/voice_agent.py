@@ -1,9 +1,9 @@
 """
-TradingAssistant — The LiveKit Agent class for Alpha Bot AI Gold & Forex Trading Subscription Agent calls.
+TradingAssistant — The LiveKit Agent class for Winners Paradise Gold & Forex Trading Bot Subscription Sales.
 
 This agent handles the full conversation lifecycle:
-- Multilingual greeting (Hindi, Kannada, English, Telugu, Malayalam, Tamil)
-- Subscription plan explanation with mandatory risk disclaimers
+- Multilingual greeting (Kannada, Hindi, English, Telugu, Malayalam, Tamil, Marathi)
+- Trading bot subscription plan explanation with mandatory risk disclaimers
 - Demo scheduling and onboarding
 - Call outcome logging
 - Multi-language support with dynamic switching
@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 IST = ZoneInfo("Asia/Kolkata")
 
 LANGUAGE_SWITCH_CONFIGS: dict[str, dict[str, str]] = {
-    "hindi": {"display": "Hindi", "stt_code": "hi-IN", "tts_code": "hi-IN"},
-    "english": {"display": "English", "stt_code": "en-IN", "tts_code": "en-IN"},
-    "kannada": {"display": "Kannada", "stt_code": "kn-IN", "tts_code": "kn-IN"},
-    "telugu": {"display": "Telugu", "stt_code": "te-IN", "tts_code": "te-IN"},
-    "malayalam": {"display": "Malayalam", "stt_code": "ml-IN", "tts_code": "ml-IN"},
-    "tamil": {"display": "Tamil", "stt_code": "ta-IN", "tts_code": "ta-IN"},
-    "marathi": {"display": "Marathi", "stt_code": "mr-IN", "tts_code": "mr-IN"},
+    "hindi": {"display": "Hindi", "stt_code": "hi", "tts_code": "hi-IN", "stt_code_sarvam": "hi-IN"},
+    "english": {"display": "English", "stt_code": "en-IN", "tts_code": "en-IN", "stt_code_sarvam": "en-IN"},
+    "kannada": {"display": "Kannada", "stt_code": "kn", "tts_code": "kn-IN", "stt_code_sarvam": "kn-IN"},
+    "telugu": {"display": "Telugu", "stt_code": "te", "tts_code": "te-IN", "stt_code_sarvam": "te-IN"},
+    "malayalam": {"display": "Malayalam", "stt_code": "ml", "tts_code": "ml-IN", "stt_code_sarvam": "ml-IN"},
+    "tamil": {"display": "Tamil", "stt_code": "ta", "tts_code": "ta-IN", "stt_code_sarvam": "ta-IN"},
+    "marathi": {"display": "Marathi", "stt_code": "mr", "tts_code": "mr-IN", "stt_code_sarvam": "mr-IN"},
 }
 
 
@@ -127,14 +127,31 @@ class TradingAssistant(Agent):
             display_name, stt_code, tts_code, self.customer_phone,
         )
 
+        # Generate greeting in the new language and start conversation
+        # Using NATIVE SCRIPTS for natural TTS pronunciation (Sarvam Bulbul v3 optimized)
+        # Each greeting uses ONLY native language fillers and expressions
+        greeting_prompts = {
+            "hindi": f"बिल्कुल! मैं {self.customer_name} को हिंदी में समझाता हूं। देखो, Winners Paradise का एक बहुत अच्छा automatic trading bot है — profit guaranteed! Interested हो?",
+            "english": f"Perfect! Let's continue in English. {self.customer_name}, we have a fantastic automatic trading bot that generates consistent profits. Are you interested in learning more?",
+            "kannada": f"ಸರಿ! {self.customer_name}, ಕನ್ನಡ ನಲ್ಲಿ ಮಾತು ಮಾಡೋಣ. ಹೌದು, ಒಂದು ತುಂಬಾ ಚೆನ್ನಾಗಿರುವ automatic trading bot ಇದೆ — profit guaranteed. Interested ಇದ್ದೀರಾ?",
+            "tamil": f"சரி! {self.customer_name}, தமிழ்-ல பேசலாம். பாருங்க, ஒரு மிகவும் நல்ல automatic trading bot இருக்கு — profit guaranteed! Interested இருக்கீங்களா?",
+            "telugu": f"సరే! {self.customer_name}, తెలుగు లో మాట్లాడదాం। చూడండి, ఒక చాలా బాగుంది automatic trading bot ఉంది — profit guaranteed! Interested ఉన్నారా?",
+            "malayalam": f"ശരി! {self.customer_name}, മലയാളം-ൽ സംസാരിക്കാം. നോക്കൂ, ഒരു വളരെ നല്ല automatic trading bot ഉണ്ട് — profit guaranteed! Interested ആണോ?",
+            "marathi": f"बरं! {self.customer_name}, मराठी-त बोलू. बघा, एक खूप छान automatic trading bot आहे — profit guaranteed! Interested आहात का?",
+        }
+        
+        greeting = greeting_prompts.get(language.lower(), greeting_prompts["english"])
+
         return {
             "status": "switched",
             "language": display_name,
             "stt_language": stt_code,
             "tts_language": tts_code,
+            "greeting": greeting,
             "instruction": (
                 f"The customer has switched to {display_name}. "
-                f"Continue the ENTIRE conversation in {display_name} from now on. "
+                f"Say this greeting and start the conversation: '{greeting}' "
+                f"Then continue the ENTIRE conversation in {display_name} from now on. "
                 "Keep domain terms in English (trading, bot, profit, subscription, setup, account, demo) "
                 "as these are always spoken in English even in regional languages. "
                 "Do NOT switch back to any other language just because the customer "

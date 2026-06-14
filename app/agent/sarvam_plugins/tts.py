@@ -34,21 +34,60 @@ class SarvamTTSOptions:
     enable_preprocessing: bool = True
 
 
-# ─── Per-language natural pace values ─────────────────────────────────────
-# Each Indian language has a distinct natural speaking rhythm. These values
-# are tuned to sound like a native speaker having a real phone conversation
-# — not too fast (robotic), not too slow (unnatural pauses).
-LANGUAGE_PACE = {
-    "hi-IN": 1.15,   # Hindi — natural Delhi/Mumbai conversational pace
-    "en-IN": 1.15,   # Indian English — natural and crisp
-    "kn-IN": 1.10,   # Kannada — relaxed Bengaluru native speech rhythm
-    "te-IN": 1.10,   # Telugu — natural Hyderabadi conversational flow
-    "ml-IN": 1.05,   # Malayalam — measured Kerala native rhythm (slightly slower)
-    "ta-IN": 1.10,   # Tamil — natural Chennai conversational flow
-    "mr-IN": 1.15,   # Marathi — natural Pune/Mumbai rhythm
-    "hi-EN": 1.15,   # Hinglish
-    "unknown": 1.15,
+# ─── Per-language natural pace values & native speakers ──────────────────
+# Each Indian language has distinct native speakers in Sarvam Bulbul v3.
+# Pace tuned for NATURAL MOTHER TONGUE SPEED — how native speakers actually talk
+# 1.1-1.2 = natural conversational speed (NOT too slow, NOT robotic)
+LANGUAGE_CONFIG = {
+    "hi-IN": {
+        "pace": 1.15,       # Natural Hindi conversational pace
+        "speakers": ["aditya", "rahul", "rohan"],  # Native Hindi male speakers
+        "preprocessing": True,  # Enable for natural breathing/pauses
+    },
+    "en-IN": {
+        "pace": 1.1,        # Natural English pace
+        "speakers": ["shubh", "dev", "varun"],  # Native English speakers
+        "preprocessing": True,
+    },
+    "kn-IN": {
+        "pace": 1.1,        # Natural Kannada conversational pace (Bengaluru speed)
+        "speakers": ["shubh", "aditya"],  # Native Kannada speakers (Bengaluru)
+        "preprocessing": True,  # Important for Kannada prosody
+    },
+    "te-IN": {
+        "pace": 1.1,        # Natural Telugu conversational pace
+        "speakers": ["rahul", "rohan"],  # Native Telugu speakers
+        "preprocessing": True,  # Telugu needs natural breathing
+    },
+    "ml-IN": {
+        "pace": 1.1,        # Natural Malayalam conversational pace
+        "speakers": ["amit", "dev"],  # Native Malayalam speakers
+        "preprocessing": True,  # Malayalam speech patterns
+    },
+    "ta-IN": {
+        "pace": 1.1,        # Natural Tamil conversational pace
+        "speakers": ["varun", "kabir"],  # Native Tamil speakers
+        "preprocessing": True,
+    },
+    "mr-IN": {
+        "pace": 1.15,       # Natural Marathi conversational pace
+        "speakers": ["mani", "gokul"],  # Native Marathi speakers
+        "preprocessing": True,  # Marathi has unique prosody
+    },
+    "hi-EN": {
+        "pace": 1.1,        # Natural Hinglish pace
+        "speakers": ["shubh", "aditya"],
+        "preprocessing": True,
+    },
+    "unknown": {
+        "pace": 1.1,
+        "speakers": ["shubh"],
+        "preprocessing": True,
+    },
 }
+
+# Legacy LANGUAGE_PACE dict for backward compatibility
+LANGUAGE_PACE = {k: v["pace"] for k, v in LANGUAGE_CONFIG.items()}
 
 
 class SarvamTTS(tts.TTS):
@@ -62,10 +101,10 @@ class SarvamTTS(tts.TTS):
         *,
         model: str = "bulbul:v3",
         target_language_code: str = "hi-IN",
-        speaker: str = "shubh",
-        pace: float | None = None,   # None = auto-select from LANGUAGE_PACE
+        speaker: str | None = None,  # If None, auto-select from language-specific pool
+        pace: float | None = None,   # If None, auto-select from LANGUAGE_CONFIG
         speech_sample_rate: int = 8000,
-        enable_preprocessing: bool = True,
+        enable_preprocessing: bool | None = None,  # If None, auto-select per language
         api_key: str | None = None,
     ):
         super().__init__(
@@ -74,15 +113,28 @@ class SarvamTTS(tts.TTS):
             num_channels=1,
         )
         self._api_key = api_key or settings.sarvam_api_key
-        # Use language-specific natural pace if caller doesn't specify one
-        resolved_pace = pace if pace is not None else LANGUAGE_PACE.get(target_language_code, 1.20)
+        
+        # Get language config
+        lang_config = LANGUAGE_CONFIG.get(target_language_code, LANGUAGE_CONFIG["unknown"])
+        
+        # Use language-specific speaker if caller didn't specify one
+        resolved_speaker = speaker
+        if resolved_speaker is None:
+            resolved_speaker = lang_config["speakers"][0]  # Use first speaker for language
+        
+        # Use language-specific pace if caller didn't override
+        resolved_pace = pace if pace is not None else lang_config["pace"]
+        
+        # Use language-specific preprocessing if caller didn't override
+        resolved_preprocessing = enable_preprocessing if enable_preprocessing is not None else lang_config["preprocessing"]
+        
         self._opts = SarvamTTSOptions(
             model=model,
             target_language_code=target_language_code,
-            speaker=speaker,
+            speaker=resolved_speaker,
             pace=resolved_pace,
             speech_sample_rate=speech_sample_rate,
-            enable_preprocessing=enable_preprocessing,
+            enable_preprocessing=resolved_preprocessing,
         )
         # Persistent session with connection pooling and keep-alive
         # This eliminates TCP/TLS handshake on subsequent requests
@@ -106,18 +158,33 @@ class SarvamTTS(tts.TTS):
     def set_language(self, language_code: str) -> None:
         """
         Switch the TTS output language at runtime (called by switch_language tool).
-        Also updates the pace to the natural speaking pace for that language.
+        Also updates:
+        - The speaker to a native speaker for that language
+        - The pace to the natural speaking pace for that language
+        - Preprocessing to language-specific settings
 
         Args:
             language_code: Sarvam TTS language code (e.g., 'hi-IN', 'kn-IN', 'en-IN')
         """
         old_lang = self._opts.target_language_code
         self._opts.target_language_code = language_code
+        
+        # Get language-specific config
+        lang_config = LANGUAGE_CONFIG.get(language_code, LANGUAGE_CONFIG["unknown"])
+        
+        # Switch to native speaker for this language
+        old_speaker = self._opts.speaker
+        self._opts.speaker = lang_config["speakers"][0]
+        
         # Update pace to the natural pace for the new language
-        self._opts.pace = LANGUAGE_PACE.get(language_code, 1.20)
+        self._opts.pace = lang_config["pace"]
+        
+        # Update preprocessing setting
+        self._opts.enable_preprocessing = lang_config["preprocessing"]
+        
         logger.info(
-            "TTS language switched: %s -> %s (pace: %.2f)",
-            old_lang, language_code, self._opts.pace,
+            "TTS language switched: %s -> %s (speaker: %s -> %s, pace: %.2f, preprocessing: %s)",
+            old_lang, language_code, old_speaker, self._opts.speaker, self._opts.pace, self._opts.enable_preprocessing,
         )
 
     @property

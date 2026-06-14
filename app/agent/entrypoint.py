@@ -122,6 +122,12 @@ def _detect_language_switch_request(transcript: str) -> str | None:
 async def entrypoint(ctx: JobContext):
     """
     LiveKit Agent entrypoint — optimized for natural, low-latency voice.
+    
+    KEY DESIGN:
+    - ALWAYS start greeting in Kannada (Winners Paradise is Bengaluru-based)
+    - Ask customer for preferred LANGUAGE (but agent voice stays same)
+    - Language switch = LLM language + STT language (NOT agent voice/speaker)
+    - Agent speaks in consistent voice across ALL languages (humanlike)
     """
     await ctx.connect()
 
@@ -129,7 +135,9 @@ async def entrypoint(ctx: JobContext):
     metadata = json.loads(ctx.room.metadata or "{}")
     customer_name = metadata.get("customer_name", "Customer")
     customer_phone = metadata.get("customer_phone", "")
-    preferred_language = metadata.get("language", settings.default_language)
+    # IMPORTANT: Don't use preferred_language for initial greeting — always start Kannada!
+    initial_greeting_language = "kn-IN"  # Winners Paradise = Bengaluru = Kannada first
+    customer_preferred_language = "kn-IN"  # Will be updated after customer responds
 
     logger.info(
         "Agent joining room %s for customer: %s (%s)",
@@ -144,10 +152,10 @@ async def entrypoint(ctx: JobContext):
     persona = pick_agent_persona(customer_gender)
     agent_name   = persona["agent_name"]
     agent_gender = persona["agent_gender"]
-    tts_speaker  = persona["tts_speaker"]
+    tts_speaker  = persona["tts_speaker"]  # THIS VOICE NEVER CHANGES
 
     logger.info(
-        "Persona selected: agent=%s (%s voice), customer_gender=%s",
+        "Persona selected: agent=%s (%s voice), customer_gender=%s — voice stays consistent across all languages",
         agent_name, tts_speaker, customer_gender,
     )
 
@@ -180,54 +188,56 @@ async def entrypoint(ctx: JobContext):
     else:
         llm_instance = openai.LLM(
             model="gpt-4o-mini",
-            temperature=0.6,  # Lower = faster, more decisive (was 0.8)
+            temperature=0.6,  # Lower = faster, more decisive
         )
         logger.info("Using OpenAI GPT-4o-mini LLM")
 
     # ─── Configure Voice Pipeline (low-latency + natural) ──────────────
-    stt_language = _resolve_stt_language(preferred_language)
-
-    # Choose STT provider based on config
-    if settings.stt_provider == "deepgram" and settings.deepgram_api_key and DEEPGRAM_AVAILABLE:
+    # Start with Kannada STT (will be updated on language switch)
+    
+    # Use BEST STT: Deepgram Nova-3 (streaming, low-latency, superior accuracy)
+    # Deepgram is superior to Sarvam for Indian languages — faster, more accurate
+    if DEEPGRAM_AVAILABLE:
+        # Use Deepgram-specific language codes (different from Sarvam)
+        deepgram_language = _resolve_deepgram_language(initial_greeting_language)
         stt_instance = deepgram_plugin.STT(
-            api_key=settings.deepgram_api_key,
-            language="en-IN",             # Indian English — handles Hindi/English code-switching
-            model="nova-2",               # nova-2 is faster than nova-3 (lower latency)
-            interim_results=True,
-            no_delay=True,
-            endpointing_ms=300,           # 300ms = fast response while capturing complete phrases
-            punctuate=False,
-            filler_words=False,
-            smart_format=False,
+            language=deepgram_language,
+            model="nova-3",  # Latest Deepgram model
         )
-        logger.info("Using Deepgram Nova-2 STT (streaming, en-IN, 300ms endpoint)")
+        logger.info("Using Deepgram Nova-3 STT (language: %s, best accuracy, lowest latency, streaming)", deepgram_language)
     else:
+        # Fallback to Sarvam if Deepgram plugin not available
+        sarvam_stt_language = _resolve_stt_language(initial_greeting_language)
         stt_instance = SarvamSTT(
-            language_code=stt_language,
+            language_code=sarvam_stt_language,
             model="saaras:v3",
         )
-        logger.info("Using Sarvam Saaras v3 STT")
+        logger.info("Deepgram unavailable, using Sarvam Saaras v3 STT as fallback (language: %s)", sarvam_stt_language)
 
+    # TTS: Use fixed agent voice (NEVER changes)
+    # Language switching is ONLY in LLM + STT, not in TTS voice
     tts_instance = SarvamTTS(
-        speaker=tts_speaker,          # persona-selected voice (opposite gender to customer)
-        target_language_code="kn-IN", # always start in Kannada
+        speaker=tts_speaker,           # FIXED agent voice (never changes)
+        target_language_code=initial_greeting_language,  # Start in Kannada
         model="bulbul:v3",
-        speech_sample_rate=8000,      # 8kHz — phone quality, 3x faster generation than 24kHz
-        enable_preprocessing=False,   # Skip preprocessing for faster response
-        # pace is auto-selected per language — see LANGUAGE_PACE in tts.py
+        speech_sample_rate=8000,       # 8kHz — phone quality
+        enable_preprocessing=True,     # Enable for natural speech prosody
+        # pace auto-selected from language config
+    )
+    logger.info(
+        "TTS: Fixed agent voice '%s' speaking Kannada initially "
+        "(will switch language on customer request, voice stays same)",
+        tts_speaker,
     )
 
-    # Pre-warm TTS connection — framework calls prewarm() synchronously when session starts.
-    # We don't call it manually here to avoid double-warming.
-
-    # Reuse prewarmed VAD model
+    # Pre-warm TTS connection
     vad_instance = ctx.proc.userdata.get("vad")
     if vad_instance is None:
         logger.warning("VAD not prewarmed for this process — loading on demand")
         vad_instance = silero.VAD.load(
-            min_speech_duration=0.05,    # 50ms = detect speech almost instantly
-            min_silence_duration=0.3,    # 300ms silence = quick turn boundary
-            activation_threshold=0.5,
+            min_speech_duration=0.03,    # 30ms = ultra-fast detection
+            min_silence_duration=0.2,    # 200ms = quick turn boundary
+            activation_threshold=0.4,    # Lower = more sensitive
         )
 
     session = AgentSession(
@@ -235,19 +245,20 @@ async def entrypoint(ctx: JobContext):
         stt=stt_instance,
         llm=llm_instance,
         tts=tts_instance,
-        # ─── ULTRA LOW-LATENCY tuning (sacrifices nothing, maximum speed) ───
-        min_endpointing_delay=0.1,     # 100ms — react IMMEDIATELY (preemptive gen handles errors)
-        max_endpointing_delay=0.8,     # 800ms max — force quick response
-        preemptive_generation=True,    # start LLM before endpoint confirmed (KEY for speed)
+        # ─── ULTRA LOW-LATENCY tuning (maximum speed) ───────────────────
+        min_endpointing_delay=0.05,    # 50ms — react INSTANTLY
+        max_endpointing_delay=0.6,     # 600ms max — very fast
+        preemptive_generation=True,    # start LLM before endpoint confirmed
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.15,# 150ms barge-in — ultra-responsive
+        min_interruption_duration=0.1, # 100ms barge-in — maximum sensitivity
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
     )
 
     # Language switching is handled ONLY by the switch_language tool (LLM-driven).
     # The customer must explicitly ask to change language — no automatic detection.
-    _current_lang = {"lang": preferred_language}
+    # Start with Kannada, will be updated when customer chooses their language
+    _current_lang = {"lang": initial_greeting_language}
 
     # Track call start time for duration measurement
     import time
@@ -301,14 +312,42 @@ async def entrypoint(ctx: JobContext):
 
     logger.info("Transcript capture started for room: %s", ctx.room.name)
 
-    # ─── Agent speaks first — always opens in Kannada ──────────────────
-    # Winners Paradise is based in Bengaluru. Every call starts in Kannada.
-    # We use the agent's context to immediately prompt the opening greeting.
+    # ─── Agent speaks first — ALWAYS START IN KANNADA (Winners Paradise = Bengaluru) ───
+    # After greeting, ask customer for preferred language
+    # If customer requests language switch later, LLM + STT switch, but agent VOICE stays same
     from app.config.constants import (
         SILENCE_PROMPTS, WRAPUP_PROMPTS, UNKNOWN_NAME_PLACEHOLDERS,
     )
 
     name_is_unknown = customer_name.strip().lower() in UNKNOWN_NAME_PLACEHOLDERS
+
+    # KANNADA GREETING ONLY (ALWAYS start here, Winners Paradise = Bengaluru)
+    # Use NATIVE KANNADA SCRIPT for natural TTS pronunciation
+    # Sarvam TTS Bulbul v3 is optimized for native Indian language scripts
+    if name_is_unknown:
+        kannada_greeting = (
+            f"ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ಇಂದ. "
+            f"ನಿಮಗೆ ಒಂದು ಸೂಪರ್ opportunity ಇದೆ — automatic trading bot. "
+            f"ಎಲ್ಲದರಲ್ಲೂ profit ಇದೆ ಬೇ, zero tension! "
+            f"ಹೌದು, ನಿಮಗೆ ಕನ್ನಡ, ಹಿಂದಿ, English, ತಮಿಳು, ತೆಲುಗು, ಮಲಯಾಳಂ, ಮರಾಠಿ — "
+            f"ಯಾವುದನ್ನು prefer ಮಾಡ್ತೀರಾ?"
+        )
+    else:
+        kannada_greeting = (
+            f"{customer_name}! ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ಇಂದ. "
+            f"ನಿಮಗೆ ಒಂದು ಸೂಪರ್ opportunity ಇದೆ — automatic trading bot. "
+            f"ಎಲ್ಲದರಲ್ಲೂ profit ಇದೆ ಬೇ, zero tension! "
+            f"ಹೌದು, ನಿಮಗೆ ಕನ್ನಡ, ಹಿಂದಿ, English, ತಮಿಳು, ತೆಲುಗು, ಮಲಯಾಳಂ, ಮರಾಠಿ — "
+            f"ಯಾವುದನ್ನು prefer ಮಾಡ್ತೀರಾ?"
+        )
+
+    greeting_prompt = (
+        f"SPEAK EXACTLY THESE WORDS IN NATIVE KANNADA SCRIPT (do not translate, do not modify, do not add, do not change): "
+        f"'{kannada_greeting}' "
+        f"This is pure Kannada with Bengaluru accent. Sound warm and genuine like a native Kannada speaker. "
+        f"STOP immediately after saying these words and LISTEN for customer response. "
+        f"DO NOT SPEAK ANY OTHER LANGUAGE."
+    )
 
     # Create the agent FIRST before starting the session
     agent = TradingAssistant(
@@ -323,29 +362,14 @@ async def entrypoint(ctx: JobContext):
     # Start the session with the agent
     await session.start(agent=agent, room=ctx.room)
 
-    # Now immediately trigger the opening greeting via LLM
-    # This keeps the session listening while playing the greeting
-    if name_is_unknown:
-        greeting_prompt = (
-            f"Say exactly this in warm Kannada (nothing more): "
-            f"'ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
-            f"ನಿಮಗೊಂದು really exciting opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
-            f"ಮೋದಲು ನಿಮ್ಮ ಹೆಸರು ಹೇಳ್ತೀರಾ please?' Then STOP and listen for their name."
-        )
-    else:
-        greeting_prompt = (
-            f"Say exactly this in warm Kannada (nothing more): "
-            f"'{customer_name} ಅವರೇ, ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
-            f"ನಿಮಗೊಂದು really exciting Gold and Forex trading opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
-            f"ಒಂದ್ minute ಮಾತಾಡಬಹುದಾ?' Then STOP and listen for their response."
-        )
-
-    # Fire the greeting through the LLM (non-blocking, keeps session active)
-    logger.info("Triggering opening greeting via LLM")
+    # Fire the opening greeting (Kannada + ask for language preference)
+    # Non-blocking — keeps session active and listening for response
+    logger.info("Triggering opening greeting via LLM (Kannada + ask for language preference)")
     session.generate_reply(instructions=greeting_prompt)
 
     logger.info(
-        "Agent session started: room=%s agent=%s (%s) opening=Kannada",
+        "Agent session started: room=%s agent=%s (%s voice — FIXED throughout) "
+        "initial_language=Kannada (will ask for customer preference), STT=Deepgram-Nova-3",
         ctx.room.name, agent_name, tts_speaker,
     )
 
