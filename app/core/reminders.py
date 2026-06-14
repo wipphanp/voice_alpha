@@ -1,7 +1,7 @@
 """
-Appointment Reminder Flow.
+Demo Call Reminder Flow.
 
-Checks upcoming appointments and generates reminder messages for WhatsApp.
+Checks upcoming demo calls and generates reminder messages for WhatsApp.
 Tracks reminder status (sent/pending).
 """
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 IST = ZoneInfo("Asia/Kolkata")
 
-# Reminder window: appointments within the next 24 hours
+# Reminder window: demo calls within the next 24 hours
 REMINDER_WINDOW_HOURS = 24
 
 # Month name → number lookup for slot parsing
@@ -34,7 +34,7 @@ _MONTHS = {
 
 def parse_appointment_slot(slot: str, now: datetime | None = None) -> datetime | None:
     """
-    Best-effort parse of a free-text appointment slot into an IST datetime.
+    Best-effort parse of a free-text demo slot into an IST datetime.
 
     Handles the English format the agent typically produces, e.g.
     "Monday June 12 at 1 PM", "Saturday June 6 at 5 PM", "June 8 at 11:30 AM".
@@ -91,7 +91,7 @@ def parse_appointment_slot(slot: str, now: datetime | None = None) -> datetime |
 
 class ReminderManager:
     """
-    Manages appointment reminders — checks upcoming bookings and
+    Manages demo call reminders — checks upcoming bookings and
     generates WhatsApp reminder messages.
     """
 
@@ -123,14 +123,14 @@ class ReminderManager:
 
     def get_upcoming_appointments(self) -> list[dict]:
         """
-        Get appointment bookings, enriched with parsed timing info.
+        Get demo call bookings, enriched with parsed timing info.
 
         Each entry gains additive fields:
           - appointment_time: ISO datetime string, or "" if unparseable
           - hours_until: float hours from now, or None if unparseable
           - parse_ok: bool — whether the slot was successfully parsed
 
-        NOTE: this returns ALL appointment bookings (not just future ones) so
+        NOTE: this returns ALL demo bookings (not just future ones) so
         existing callers keep working; use get_due_reminders() for the
         time-windowed set actually eligible for an automatic reminder.
         """
@@ -162,7 +162,7 @@ class ReminderManager:
 
     def get_due_reminders(self) -> list[dict]:
         """
-        Appointments eligible for an automatic reminder right now:
+        Demo calls eligible for an automatic reminder right now:
           - the slot was parseable,
           - it is in the future,
           - it falls within the next REMINDER_WINDOW_HOURS,
@@ -184,7 +184,7 @@ class ReminderManager:
                 continue
             hours_until = appt["hours_until"]
             if hours_until is None or hours_until < 0:
-                continue  # past appointment
+                continue  # past demo call
             if hours_until > REMINDER_WINDOW_HOURS:
                 continue  # too far out
             key = f"{appt['customer_phone']}_{appt['slot_chosen']}"
@@ -196,7 +196,7 @@ class ReminderManager:
 
     def send_due_reminders(self) -> int:
         """
-        Send reminders for all due appointments via the WhatsApp layer and
+        Send reminders for all due demo calls via the WhatsApp layer and
         mark each as sent. Idempotent — already-sent reminders are skipped.
 
         Returns the number of reminders sent.
@@ -230,8 +230,8 @@ class ReminderManager:
 
     def get_pending_reminders(self) -> list[dict]:
         """
-        Get appointments needing reminders (not yet sent).
-        Returns list of appointments with reminder status.
+        Get demo calls needing reminders (not yet sent).
+        Returns list of demo calls with reminder status.
         """
         upcoming = self.get_upcoming_appointments()
         sent_reminders = self._read_reminders()

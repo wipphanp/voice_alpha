@@ -182,13 +182,13 @@ async def entrypoint(ctx: JobContext):
             model="sarvam-30b",
             base_url="https://api.sarvam.ai/v1",
             api_key=settings.sarvam_api_key,
-            temperature=0.5,  # Lower = faster, more focused responses
+            temperature=0.4,  # Lower = faster, more focused, more decisive responses
         )
         logger.info("Using Sarvam sarvam-30b LLM")
     else:
         llm_instance = openai.LLM(
             model="gpt-4o-mini",
-            temperature=0.6,  # Lower = faster, more decisive
+            temperature=0.5,  # Lower = faster, more decisive, quicker responses
         )
         logger.info("Using OpenAI GPT-4o-mini LLM")
 
@@ -245,12 +245,12 @@ async def entrypoint(ctx: JobContext):
         stt=stt_instance,
         llm=llm_instance,
         tts=tts_instance,
-        # ─── ULTRA LOW-LATENCY tuning (maximum speed) ───────────────────
-        min_endpointing_delay=0.05,    # 50ms — react INSTANTLY
-        max_endpointing_delay=0.6,     # 600ms max — very fast
+        # ─── AGGRESSIVE LOW-LATENCY tuning (maximum conversation speed) ───
+        min_endpointing_delay=0.03,    # 30ms — react INSTANTLY
+        max_endpointing_delay=0.5,     # 500ms max — ultra fast
         preemptive_generation=True,    # start LLM before endpoint confirmed
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.1, # 100ms barge-in — maximum sensitivity
+        min_interruption_duration=0.08, # 80ms barge-in — ultra sensitive
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
     )
