@@ -63,7 +63,7 @@ def main():
     # Generate sip-trunk.json
     trunk_config = {
         "trunk": {
-            "name": "Sunrise-India-Outbound-Plivo",
+            "name": "WinnersParadise-India-Outbound-Plivo",
             "address": "sip.plivo.com",
             "numbers": [plivo_phone],
             "auth_username": plivo_auth_id,

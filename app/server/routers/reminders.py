@@ -1,7 +1,7 @@
 """
 Reminders API router.
 
-Provides endpoints for checking and managing appointment reminders.
+Provides endpoints for checking and managing demo call reminders.
 """
 
 from fastapi import APIRouter
@@ -16,33 +16,33 @@ router = APIRouter()
 async def get_reminders():
     """
     Get all reminders — both sent and pending.
-    Pending reminders are appointments that haven't been reminded yet.
+    Pending reminders are demo calls that haven't been reminded yet.
     """
     return reminder_manager.get_all_reminders()
 
 
 @router.get("/pending")
 async def get_pending_reminders():
-    """Get appointments that need reminders sent."""
+    """Get demo calls that need reminders sent."""
     return reminder_manager.get_pending_reminders()
 
 
 @router.get("/upcoming")
 async def get_upcoming_appointments():
-    """Get all upcoming appointments (within 24 hours)."""
+    """Get all upcoming demo calls (within 24 hours)."""
     return reminder_manager.get_upcoming_appointments()
 
 
 @router.post("/send/{phone}")
 async def send_reminder(phone: str, slot: str = ""):
     """
-    Send a reminder for a specific appointment.
+    Send a reminder for a specific demo call.
 
     Args:
         phone: Customer phone number (URL path parameter)
-        slot: Appointment slot (query parameter)
+        slot: Demo call slot (query parameter)
     """
-    # Find the appointment
+    # Find the demo call
     pending = reminder_manager.get_pending_reminders()
     target = None
 

@@ -36,51 +36,51 @@ class SarvamTTSOptions:
 
 # ─── Per-language natural pace values & native speakers ──────────────────
 # Each Indian language has distinct native speakers in Sarvam Bulbul v3.
-# Pace tuned for NATURAL MOTHER TONGUE SPEED — how native speakers actually talk
-# 1.1-1.2 = natural conversational speed (NOT too slow, NOT robotic)
+# Pace tuned for FAST CONVERSATIONAL SPEED — energetic, quick responses
+# 1.2-1.3 = fast conversational speed (keeps conversation moving)
 LANGUAGE_CONFIG = {
     "hi-IN": {
-        "pace": 1.15,       # Natural Hindi conversational pace
+        "pace": 1.25,       # Fast Hindi conversational pace
         "speakers": ["aditya", "rahul", "rohan"],  # Native Hindi male speakers
         "preprocessing": True,  # Enable for natural breathing/pauses
     },
     "en-IN": {
-        "pace": 1.1,        # Natural English pace
+        "pace": 1.2,        # Fast English pace
         "speakers": ["shubh", "dev", "varun"],  # Native English speakers
         "preprocessing": True,
     },
     "kn-IN": {
-        "pace": 1.1,        # Natural Kannada conversational pace (Bengaluru speed)
+        "pace": 1.2,        # Fast Kannada conversational pace (energetic Bengaluru)
         "speakers": ["shubh", "aditya"],  # Native Kannada speakers (Bengaluru)
         "preprocessing": True,  # Important for Kannada prosody
     },
     "te-IN": {
-        "pace": 1.1,        # Natural Telugu conversational pace
+        "pace": 1.2,        # Fast Telugu conversational pace
         "speakers": ["rahul", "rohan"],  # Native Telugu speakers
         "preprocessing": True,  # Telugu needs natural breathing
     },
     "ml-IN": {
-        "pace": 1.1,        # Natural Malayalam conversational pace
+        "pace": 1.2,        # Fast Malayalam conversational pace
         "speakers": ["amit", "dev"],  # Native Malayalam speakers
         "preprocessing": True,  # Malayalam speech patterns
     },
     "ta-IN": {
-        "pace": 1.1,        # Natural Tamil conversational pace
+        "pace": 1.2,        # Fast Tamil conversational pace
         "speakers": ["varun", "kabir"],  # Native Tamil speakers
         "preprocessing": True,
     },
     "mr-IN": {
-        "pace": 1.15,       # Natural Marathi conversational pace
+        "pace": 1.25,       # Fast Marathi conversational pace
         "speakers": ["mani", "gokul"],  # Native Marathi speakers
         "preprocessing": True,  # Marathi has unique prosody
     },
     "hi-EN": {
-        "pace": 1.1,        # Natural Hinglish pace
+        "pace": 1.2,        # Fast Hinglish pace
         "speakers": ["shubh", "aditya"],
         "preprocessing": True,
     },
     "unknown": {
-        "pace": 1.1,
+        "pace": 1.2,
         "speakers": ["shubh"],
         "preprocessing": True,
     },

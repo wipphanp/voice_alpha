@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _reminder_loop():
-    """Periodically send due appointment reminders (runs in the server process)."""
+    """Periodically send due demo call reminders (runs in the server process)."""
     from app.config.constants import REMINDER_CHECK_INTERVAL_SECONDS
     from app.core.reminders import reminder_manager
 

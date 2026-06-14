@@ -1,6 +1,6 @@
 {
   "trunk": {
-    "name": "Sunrise-India-Outbound-Plivo",
+    "name": "WinnersParadise-India-Outbound-Plivo",
     "address": "sip.plivo.com",
     "numbers": ["+91XXXXXXXXXX"],
     "auth_username": "YOUR_PLIVO_AUTH_ID",

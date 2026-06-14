@@ -1,4 +1,4 @@
-"""Context API — returns broker configuration and runtime info."""
+"""Context API — returns sales assistant configuration and runtime info."""
 
 from fastapi import APIRouter
 
@@ -9,5 +9,5 @@ router = APIRouter()
 
 @router.get("/context")
 async def api_context():
-    """Return broker configuration, current date, and available slots."""
+    """Return sales assistant configuration, current date, and available slots."""
     return get_runtime_context()
