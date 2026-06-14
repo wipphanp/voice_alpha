@@ -236,13 +236,15 @@ async def entrypoint(ctx: JobContext):
         llm=llm_instance,
         tts=tts_instance,
         # ─── ULTRA LOW-LATENCY tuning (maximum speed) ───────────────────
-        min_endpointing_delay=0.05,    # 50ms — react INSTANTLY (was 100ms)
-        max_endpointing_delay=0.6,     # 600ms max — very fast (was 800ms)
-        preemptive_generation=True,    # start LLM before endpoint confirmed (KEY for speed)
+        min_endpointing_delay=0.05,    # 50ms — react INSTANTLY
+        max_endpointing_delay=0.6,     # 600ms max — very fast
+        preemptive_generation=True,    # start LLM before endpoint confirmed
         allow_interruptions=True,      # customer can interrupt anytime
-        min_interruption_duration=0.1, # 100ms barge-in — maximum sensitivity (was 150ms)
+        min_interruption_duration=0.1, # 100ms barge-in — maximum sensitivity
         min_interruption_words=1,      # at least 1 word to interrupt
         user_away_timeout=25.0,
+        # ─── DISABLE AEC (Acoustic Echo Cancellation) to allow customer input ─
+        aec_dump_len=0,               # Disable AEC warmup (was causing 3s delay)
     )
 
     # Language switching is handled ONLY by the switch_language tool (LLM-driven).
