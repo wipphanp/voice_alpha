@@ -245,19 +245,6 @@ async def entrypoint(ctx: JobContext):
         user_away_timeout=25.0,
     )
 
-    # Create the agent
-    agent = TradingAssistant(
-        customer_name=customer_name,
-        customer_phone=customer_phone,
-        system_prompt=system_prompt,
-        stt_instance=stt_instance,
-        tts_instance=tts_instance,
-        job_context=ctx,
-    )
-
-    # Start the session
-    await session.start(agent=agent, room=ctx.room)
-
     # Language switching is handled ONLY by the switch_language tool (LLM-driven).
     # The customer must explicitly ask to change language — no automatic detection.
     _current_lang = {"lang": preferred_language}
@@ -316,32 +303,46 @@ async def entrypoint(ctx: JobContext):
 
     # ─── Agent speaks first — always opens in Kannada ──────────────────
     # Winners Paradise is based in Bengaluru. Every call starts in Kannada.
-    # Use session.say() for immediate, deterministic playback of the greeting.
+    # We use the agent's context to immediately prompt the opening greeting.
     from app.config.constants import (
         SILENCE_PROMPTS, WRAPUP_PROMPTS, UNKNOWN_NAME_PLACEHOLDERS,
     )
 
     name_is_unknown = customer_name.strip().lower() in UNKNOWN_NAME_PLACEHOLDERS
 
+    # Create the agent FIRST before starting the session
+    agent = TradingAssistant(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        system_prompt=system_prompt,
+        stt_instance=stt_instance,
+        tts_instance=tts_instance,
+        job_context=ctx,
+    )
+
+    # Start the session with the agent
+    await session.start(agent=agent, room=ctx.room)
+
+    # Now immediately trigger the opening greeting via LLM
+    # This keeps the session listening while playing the greeting
     if name_is_unknown:
-        # Direct greeting text for unknown names
-        greeting_text = (
-            f"ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
+        greeting_prompt = (
+            f"Say exactly this in warm Kannada (nothing more): "
+            f"'ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
             f"ನಿಮಗೊಂದು really exciting opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
-            f"ಮೋದಲು ನಿಮ್ಮ ಹೆಸರು ಹೇಳ್ತೀರಾ please?"
+            f"ಮೋದಲು ನಿಮ್ಮ ಹೆಸರು ಹೇಳ್ತೀರಾ please?' Then STOP and listen for their name."
         )
     else:
-        # Direct greeting text with customer name
-        greeting_text = (
-            f"{customer_name} ಅವರೇ, ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
+        greeting_prompt = (
+            f"Say exactly this in warm Kannada (nothing more): "
+            f"'{customer_name} ಅವರೇ, ನಮಸ್ಕಾರ! ನಾನು {agent_name}, Winners Paradise ನಿಂದ ಮಾತಾಡ್ತಿದ್ದೇನೆ. "
             f"ನಿಮಗೊಂದು really exciting Gold and Forex trading opportunity ಬಗ್ಗೆ ಹೇಳಕ್ಕೆ call ಮಾಡಿದ್ದೇನೆ — "
-            f"ಒಂದ್ minute ಮಾತಾಡಬಹುದಾ?"
+            f"ಒಂದ್ minute ಮಾತಾಡಬಹುದಾ?' Then STOP and listen for their response."
         )
 
-    # Queue the greeting for immediate playback using session.say()
-    # This ensures the customer hears the agent speaking immediately.
-    logger.info("Speaking opening greeting: %s", greeting_text[:50] + "...")
-    session.say(greeting_text, allow_interruptions=True)
+    # Fire the greeting through the LLM (non-blocking, keeps session active)
+    logger.info("Triggering opening greeting via LLM")
+    session.generate_reply(instructions=greeting_prompt)
 
     logger.info(
         "Agent session started: room=%s agent=%s (%s) opening=Kannada",
